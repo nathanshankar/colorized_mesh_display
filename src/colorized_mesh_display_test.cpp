@@ -1,14 +1,16 @@
 #include <pcl/io/vtk_lib_io.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <pcl_msgs/msg/polygon_mesh.hpp>
 #include <random>
 
 template<typename T>
-bool get(const ros::NodeHandle &nh, const std::string &key, T &val)
+bool get(const std::shared_ptr<rclcpp::Node> &node, const std::string &key, T &val)
 {
-  if (!nh.getParam(key, val))
+  if (!node->get_parameter(key, val))
   {
-    ROS_ERROR_STREAM("Failed to get '" << key << "' parameter");
+    RCLCPP_ERROR(node->get_logger(), "Failed to get '%s' parameter", key.c_str());
     return false;
   }
   return true;
@@ -16,40 +18,43 @@ bool get(const ros::NodeHandle &nh, const std::string &key, T &val)
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "colorized_mesh_display_test_node");
-  ros::NodeHandle nh, pnh("~");
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<rclcpp::Node>("colorized_mesh_display_test_node");
 
   std::string path;
-  if(!get(pnh, "mesh_file", path))
+  node->declare_parameter<std::string>("mesh_file", "");
+  if(!get(node, "mesh_file", path))
     return -1;
 
   std::string base_frame;
-  if(!get(pnh, "base_frame", base_frame))
+  node->declare_parameter<std::string>("base_frame", "");
+  if(!get(node, "base_frame", base_frame))
     return -1;
 
   // Load the mesh into a ROS message
-  pcl_msgs::PolygonMesh msg;
+  pcl_msgs::msg::PolygonMesh msg;
   {
     pcl::PolygonMesh mesh;
     if(pcl::io::loadPolygonFile(path, mesh) < 0)
     {
-      ROS_ERROR_STREAM("Failed to load mesh file from '" << path << "'");
+      RCLCPP_ERROR(node->get_logger(), "Failed to load mesh file from '%s'", path.c_str());
       return -1;
     }
-    ROS_INFO_STREAM("Successfully loaded mesh file");
+    RCLCPP_INFO(node->get_logger(), "Successfully loaded mesh file");
 
     // Convert the mesh
     pcl_conversions::fromPCL(mesh, msg);
     msg.header.frame_id = base_frame;
-    msg.header.stamp = ros::Time::now();
+    msg.header.stamp = node->now();
   }
 
   // Publish the mesh
-  ros::Publisher pub = nh.advertise<pcl_msgs::PolygonMesh>("colorized_mesh", 1, true);
-  pub.publish(msg);
-  ROS_INFO_STREAM("Published colorized mesh file");
+  auto pub = node->create_publisher<pcl_msgs::msg::PolygonMesh>("colorized_mesh", 1);
+  pub->publish(msg);
+  RCLCPP_INFO(node->get_logger(), "Published colorized mesh file");
 
-  ros::spin();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
 
   return 0;
 }

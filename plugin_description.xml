@@ -1,7 +1,9 @@
-<library path="lib/libcolorized_mesh_display">
-  <class name="colorized_mesh_display/ColorizedMesh" type="colorized_mesh_display::ColorizedMeshDisplay" base_class_type="rviz::Display">
+<library path="colorized_mesh_display">
+  <class name="colorized_mesh_display::ColorizedMeshDisplay"
+         type="colorized_mesh_display::ColorizedMeshDisplay"
+         base_class_type="rviz_common::Display">
     <description>
-      Display for a mesh with per vertex colorization
+      Visualize pcl_msgs::msg::PolygonMesh with colorized rendering in RViz.
     </description>
   </class>
 </library>
